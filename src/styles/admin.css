@@ -54,8 +54,9 @@
 .villa-table td {
   padding: 16px;
   color: #4a4a4a;
-  text-align: center;
+  text-align: center; /* Terapkan text-align: center untuk semua th dan td */
   border-bottom: 1px solid #e0e0e0;
+  vertical-align: middle; /* Tengah vertikal untuk sel tabel */
 }
 
 .villa-table th {
@@ -63,8 +64,9 @@
   font-weight: 600;
 }
 
+/* Tombol Aksi Umum (Approve/Reject) */
 .btn-approve {
-  background-color: #577C8E; 
+  background-color: #577C8E;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -92,6 +94,53 @@
   background-color: #c0392b;
 }
 
+/* Styling untuk ikon mata (View Proof) */
+.villa-table td a svg {
+  font-size: 1.1rem; /* Ukuran ikon */
+  color: #3498db; /* Warna ikon */
+  transition: color 0.3s ease;
+}
+
+.villa-table td a svg:hover {
+  color: #217dbb;
+}
+
+/* Styling untuk tombol Approve/Reject booking (lebih spesifik) */
+.admin-content .btn-approve,
+.admin-content .btn-reject {
+  margin-right: 5px;
+  font-size: 0.85rem;
+  padding: 6px 12px;
+}
+
+.admin-content .btn-approve:disabled,
+.admin-content .btn-reject:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Warna status untuk Booking */
+.status-pending {
+  color: #ffc107; /* Kuning */
+  font-weight: 600;
+}
+
+.status-payment-uploaded { /* Status setelah bukti pembayaran diunggah */
+  color: #007bff; /* Biru */
+  font-weight: 600;
+}
+
+.status-confirmed {
+  color: #28a745; /* Hijau */
+  font-weight: 600;
+}
+
+.status-cancelled {
+  color: #dc3545; /* Merah */
+  font-weight: 600;
+}
+
+/* Penyesuaian Responsif */
 @media (max-width: 768px) {
   .admin-container {
     flex-direction: column;
@@ -101,6 +150,24 @@
     width: 100%;
     text-align: center;
     border-bottom: 1px solid #ddd;
+    padding: 20px 10px; /* Kurangi padding samping */
+  }
+
+  .admin-sidebar ul {
+    display: flex;
+    justify-content: center;
+    gap: 15px; /* Jarak antar item menu */
+    flex-wrap: wrap; /* Izinkan wrap jika terlalu banyak item */
+  }
+
+  .admin-sidebar li {
+    margin-bottom: 0; /* Hapus margin bawah pada item menu */
+    padding: 5px 10px; /* Tambahkan padding agar bisa diklik */
+    border-radius: 8px; /* Sudut membulat */
+  }
+
+  .admin-sidebar li.active {
+    background-color: #e0e0e0; /* Latar belakang untuk item aktif */
   }
 
   .admin-content {
@@ -110,6 +177,27 @@
   .villa-table table,
   .villa-table th,
   .villa-table td {
-    font-size: 14px;
+    font-size: 12px; /* Kurangi ukuran font tabel */
+    padding: 10px; /* Kurangi padding tabel */
+  }
+
+  .admin-content .btn-approve,
+  .admin-content .btn-reject {
+    display: block;
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 5px;
+    font-size: 0.75rem; /* Ukuran font tombol lebih kecil */
+    padding: 5px 10px;
+  }
+
+  .filter-buttons {
+    flex-wrap: wrap; /* Buat tombol filter wrap pada layar kecil */
+    justify-content: center;
+  }
+
+  .filter-buttons .btn {
+    flex: 1 1 auto; /* Izinkan tombol mengisi ruang */
+    margin: 5px; /* Jarak antar tombol filter */
   }
 }

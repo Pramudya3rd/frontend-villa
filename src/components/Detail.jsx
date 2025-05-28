@@ -1,6 +1,6 @@
 // frontend-sewa-villa/src/components/Detail.jsx
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   FaStar,
   FaTv,
@@ -15,75 +15,127 @@ import {
   FaLayerGroup,
 } from "react-icons/fa";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL; // Pastikan variabel ini ada di .env frontend
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const Detail = ({ villaId }) => {
-  // Menerima villaId sebagai prop
+const Detail = () => {
+  const { id } = useParams(); // Mengambil ID langsung di sini
   const navigate = useNavigate();
-  const [villa, setVilla] = useState(null); // State untuk data villa
-  const [loading, setLoading] = useState(true); // State loading
-  const [error, setError] = useState(null); // State error
+  const [villa, setVilla] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [currentMainImage, setCurrentMainImage] = useState("");
 
   useEffect(() => {
     const fetchVillaDetails = async () => {
-      // DEBUGGING: Log villaId yang diterima
-      console.log("[DEBUG Detail] Fetching villa details for ID:", villaId);
+      console.log("[DEBUG Detail] Fetching villa details for ID:", id);
 
-      if (!villaId) {
-        // Jika villaId tidak ada, set error dan berhenti
+      if (!id) {
         setError("Villa ID is missing in URL.");
         setLoading(false);
         return;
       }
       try {
-        const response = await fetch(`${BASE_URL}/api/villas/${villaId}`); // Ambil detail villa dari backend
-        // DEBUGGING: Log respons status
+        const response = await fetch(`${BASE_URL}/api/villas/${id}`);
         console.log("[DEBUG Detail] Fetch response status:", response.status);
 
         if (response.ok) {
           const data = await response.json();
-          // DEBUGGING: Log data yang diterima
           console.log("[DEBUG Detail] Fetched villa data:", data);
-          setVilla(data); // Set data villa ke state
+
+          // --- Perbaikan: Pastikan features selalu menjadi array ---
+          let processedFeatures = [];
+          if (Array.isArray(data.features)) {
+            processedFeatures = data.features;
+          } else if (typeof data.features === "string") {
+            try {
+              const parsed = JSON.parse(data.features);
+              if (Array.isArray(parsed)) {
+                processedFeatures = parsed;
+              } else {
+                processedFeatures = data.features
+                  .split(",")
+                  .map((f) => f.trim());
+              }
+            } catch (e) {
+              processedFeatures = data.features.split(",").map((f) => f.trim());
+            }
+          }
+          // --- Akhir perbaikan features ---
+
+          // --- Perbaikan: Pastikan images selalu menjadi array ---
+          let processedImages = [];
+          if (Array.isArray(data.images)) {
+            processedImages = data.images;
+          } else if (typeof data.images === "string") {
+            try {
+              const parsed = JSON.parse(data.images);
+              if (Array.isArray(parsed)) {
+                processedImages = parsed;
+              }
+            } catch (e) {
+              // Biarkan kosong jika tidak bisa di-parse sebagai array JSON
+            }
+          }
+          // --- Akhir perbaikan images ---
+
+          setVilla({
+            ...data,
+            features: processedFeatures,
+            images: processedImages,
+          });
+          setCurrentMainImage(getImageUrl(data.mainImage));
         } else {
           const errorData = await response.json();
           console.error(
             "[DEBUG Detail] Failed to fetch villa details:",
             errorData
           );
-          setError(errorData.message || "Failed to fetch villa details."); // Set pesan error dari backend
+          setError(errorData.message || "Failed to fetch villa details.");
         }
       } catch (err) {
         console.error(
           "Error fetching villa details (network/parse error):",
           err
         );
-        setError("Network error or server unavailable when fetching villa."); // Tangani error jaringan
+        setError("Network error or server unavailable when fetching villa.");
       } finally {
-        setLoading(false); // Selesai loading
+        setLoading(false);
       }
     };
     fetchVillaDetails();
-  }, [villaId]); // Panggil ulang useEffect jika villaId berubah
+  }, [id]);
 
-  // Tampilkan pesan loading, error, atau villa not found
+  // Helper function to safely construct image URLs
+  const getImageUrl = (path) => {
+    if (!path) {
+      return "https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg"; // Default placeholder if path is empty
+    }
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${BASE_URL}${normalizedPath}`;
+  };
+
+  const handleThumbnailClick = (imagePath) => {
+    setCurrentMainImage(getImageUrl(imagePath));
+  };
+
   if (loading)
     return <p className="text-center mt-5">Loading villa details...</p>;
   if (error) return <p className="text-center text-danger mt-5">{error}</p>;
-  if (!villa) return <p className="text-center mt-5">Villa not found.</p>; // <-- Pesan ini yang muncul
+  if (!villa) return <p className="text-center mt-5">Villa not found.</p>;
 
-  // Pastikan URL gambar dari backend benar, mungkin perlu prefix BASE_URL jika gambar disimpan secara lokal
-  const mainImageUrl =
-    villa.mainImage && villa.mainImage.startsWith("/")
-      ? BASE_URL + villa.mainImage
-      : villa.mainImage;
-  const roomImages = (villa.images || []).map((img) =>
-    img.startsWith("/") ? BASE_URL + img : img
-  );
-
+  // Perbaikan: Penanganan yang lebih aman untuk navigasi Booking
   const handleBooking = () => {
-    if (villa) {
-      // Data villa sudah ada, lanjutkan ke booking
+    console.log("Attempting to navigate to booking. Villa object:", villa);
+    console.log(
+      "Villa ID for booking:",
+      villa ? villa.id : "ID is undefined/null"
+    );
+
+    // Pastikan villa dan villa.id tersedia sebelum navigasi
+    if (villa && villa.id) {
       navigate(`/booking/${villa.id}`, {
         state: {
           title: villa.name,
@@ -99,37 +151,65 @@ const Detail = ({ villaId }) => {
         },
       });
     } else {
-      // Ini seharusnya tidak terjadi jika 'if (!villa) return ...' sudah di atas
-      alert("Villa details are not fully loaded. Please try again.");
+      // Tampilkan pesan error kepada pengguna jika ID tidak ditemukan
+      alert(
+        "Cannot proceed to booking: Villa details or ID are missing. Please try again later."
+      );
+      console.error("Booking failed: Villa object or ID is invalid.", villa);
     }
   };
+
+  // Ambil hingga 4 gambar (termasuk gambar utama) untuk thumbnail
+  const allAvailableImages = [];
+  if (villa.mainImage) {
+    allAvailableImages.push(villa.mainImage);
+  }
+  if (Array.isArray(villa.images)) {
+    villa.images.forEach((img) => {
+      if (img && img !== villa.mainImage) {
+        // Pastikan img tidak null/undefined dan bukan mainImage
+        allAvailableImages.push(img);
+      }
+    });
+  }
+  const displayedThumbnails = allAvailableImages.slice(0, 4); // Batasi hingga 4 thumbnail
 
   return (
     <div className="container py-5">
       <div className="row g-5">
-        {/* ... (render detail villa seperti sebelumnya) ... */}
-        {/* Gambar utama dan thumbnail */}
+        {/* Main image and thumbnails */}
         <div className="col-md-6">
           <img
-            src={mainImageUrl}
+            src={currentMainImage}
             alt={villa.name}
             className="img-fluid rounded-4 mb-3"
+            style={{ width: "100%", height: "400px", objectFit: "cover" }}
           />
           <div className="row g-3">
-            {roomImages.slice(0, 3).map((img, i) => (
+            {displayedThumbnails.map((img, i) => (
               <div className="col-4" key={i}>
                 <img
-                  src={img}
-                  alt={`room-${i}`}
+                  src={getImageUrl(img)}
+                  alt={`thumbnail-${i}`}
                   className="img-fluid img-thumbnail rounded-4"
-                  style={{ height: "80px", objectFit: "cover", width: "100%" }}
+                  style={{
+                    height: "80px",
+                    objectFit: "cover",
+                    width: "100%",
+                    cursor: "pointer",
+                    border:
+                      currentMainImage === getImageUrl(img)
+                        ? "2px solid #5a7684"
+                        : "none",
+                  }}
+                  onClick={() => handleThumbnailClick(img)}
                 />
               </div>
             ))}
           </div>
         </div>
 
-        {/* Info Detail Villa */}
+        {/* Villa Detail Info */}
         <div className="col-md-6">
           <h3 className="fw-bold">{villa.name}</h3>
           <p className="mb-2">
@@ -150,23 +230,29 @@ const Detail = ({ villaId }) => {
 
           <h6 className="fw-bold mt-4 mb-2">Room Features</h6>
           <div className="row row-cols-2 mb-3 text-muted">
-            {villa.features &&
-              villa.features.map((feature, i) => (
-                <div className="col mb-2" key={i}>
-                  {feature === "TV" && <FaTv className="me-2" />}
-                  {feature === "Free Wifi" && <FaWifi className="me-2" />}
-                  {feature === "Air Conditioner" && (
-                    <FaSnowflake className="me-2" />
-                  )}
-                  {feature === "Heater" && (
-                    <FaThermometerHalf className="me-2" />
-                  )}
-                  {feature === "Private Bathroom" && (
-                    <FaBath className="me-2" />
-                  )}
-                  {feature}
-                </div>
-              ))}
+            {Array.isArray(villa.features) &&
+              villa.features
+                .filter((feature) => feature.trim() !== "")
+                .map((feature, i) => (
+                  <div className="col mb-2" key={i}>
+                    {feature.toLowerCase().includes("tv") && (
+                      <FaTv className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("wifi") && (
+                      <FaWifi className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("air conditioner") && (
+                      <FaSnowflake className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("heater") && (
+                      <FaThermometerHalf className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("private bathroom") && (
+                      <FaBath className="me-2" />
+                    )}
+                    {feature}
+                  </div>
+                ))}
             {villa.guests && (
               <div className="col mb-2">
                 <FaUserFriends className="me-2" />

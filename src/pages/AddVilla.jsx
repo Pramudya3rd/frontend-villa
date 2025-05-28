@@ -1,14 +1,14 @@
-// frontend-sewa-villa/src/pages/AddVilla.jsx
+// frontend-villa/src/pages/AddVilla.jsx
 import React, { useState } from "react";
-import NavbarProfile from "../components/NavbarProfile"; //
-import "../styles/add-villa.css"; //
-import { useAuth } from "../context/AuthContext"; // Import useAuth
+import NavbarProfile from "../components/NavbarProfile";
+import "../styles/add-villa.css";
+import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const AddVilla = () => {
-  const { token } = useAuth(); // Get token from context
+  const { token } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -17,10 +17,14 @@ const AddVilla = () => {
     description: "",
     capacity: "",
     price: "",
-    mainImage: null, // File object for upload
+    size: "",
+    bedType: "",
+    mainImage: null,
+    additionalImages: [],
   });
 
-  const [previewImage, setPreviewImage] = useState(null);
+  const [previewMainImage, setPreviewMainImage] = useState(null);
+  const [previewAdditionalImages, setPreviewAdditionalImages] = useState([]);
   const [roomFeatures, setRoomFeatures] = useState([]);
   const [newFeature, setNewFeature] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,14 +32,36 @@ const AddVilla = () => {
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
+
     if (name === "mainImage" && files.length > 0) {
-      // Changed name from 'image' to 'mainImage'
       const file = files[0];
       setFormData({ ...formData, mainImage: file });
-      setPreviewImage(URL.createObjectURL(file));
+      setPreviewMainImage(URL.createObjectURL(file));
+    } else if (name === "additionalImages") {
+      const newFiles = Array.from(files);
+      setFormData((prev) => ({
+        ...prev,
+        additionalImages: [...prev.additionalImages, ...newFiles],
+      }));
+      const newPreviews = newFiles.map((file) => URL.createObjectURL(file));
+      setPreviewAdditionalImages((prev) => [...prev, ...newPreviews]);
     } else {
       setFormData({ ...formData, [name]: value });
     }
+  };
+
+  const removeAdditionalImage = (index) => {
+    setFormData((prev) => {
+      const updatedImages = [...prev.additionalImages];
+      updatedImages.splice(index, 1);
+      return { ...prev, additionalImages: updatedImages };
+    });
+    setPreviewAdditionalImages((prev) => {
+      const updatedPreviews = [...prev];
+      URL.revokeObjectURL(updatedPreviews[index]);
+      updatedPreviews.splice(index, 1);
+      return updatedPreviews;
+    });
   };
 
   const handleFeatureChange = (e) => {
@@ -53,6 +79,22 @@ const AddVilla = () => {
     setRoomFeatures(roomFeatures.filter((f) => f !== feature));
   };
 
+  const uploadImage = async (file) => {
+    const formDataImage = new FormData();
+    formDataImage.append("image", file); // Key 'image' sesuai backend multer
+
+    const response = await fetch(`${BASE_URL}/api/upload`, {
+      method: "POST",
+      body: formDataImage,
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || `Failed to upload image: ${file.name}`);
+    }
+    return data.imageUrl;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -64,56 +106,61 @@ const AddVilla = () => {
       return;
     }
 
-    let mainImageUrl = "";
-    if (formData.mainImage) {
-      try {
-        const formDataImage = new FormData();
-        formDataImage.append("image", formData.mainImage); // Key 'image' sesuai backend multer
-
-        const uploadResponse = await fetch(`${BASE_URL}/api/upload`, {
-          method: "POST",
-          body: formDataImage,
-        });
-
-        const uploadData = await uploadResponse.json();
-        if (uploadResponse.ok) {
-          mainImageUrl = uploadData.imageUrl;
-        } else {
-          setError(uploadData.message || "Failed to upload image.");
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.error("Image upload error:", err);
-        setError("Network error during image upload.");
-        setLoading(false);
-        return;
-      }
-    } else {
-      setError("Main image is required.");
+    // STEP 1: Validasi data formulir terlebih dahulu
+    if (
+      !formData.villaName.trim() ||
+      !formData.address.trim() ||
+      !formData.description.trim() ||
+      !formData.capacity ||
+      !formData.price ||
+      !formData.size.trim() ||
+      !formData.bedType.trim() ||
+      !formData.mainImage
+    ) {
+      setError(
+        "All fields (Villa Name, Address, Description, Capacity, Price, Size, Bed Type, and Main Image) are required."
+      );
       setLoading(false);
       return;
     }
 
-    const completeData = {
-      villaName: formData.villaName,
-      address: formData.address, // Mapped to 'location' in backend
-      description: formData.description,
-      capacity: parseInt(formData.capacity), // Mapped to 'guests' in backend
-      price: parseFloat(formData.price),
-      mainImage: mainImageUrl,
-      images: [], // Anda bisa menambahkan logika untuk multiple images jika ada
-      features: roomFeatures,
-      // Tambahkan fitur villa lainnya jika ada di form, contoh: beds, bathrooms, area, pool, floor
-      beds: 0, // Placeholder jika tidak ada input di form
-      bathrooms: 0, // Placeholder
-      area: "", // Placeholder
-      pool: 0, // Placeholder
-      guests: parseInt(formData.capacity), // Pastikan konsisten
-      floor: 0, // Placeholder
-    };
+    let mainImageUrl = "";
+    const additionalImageUrls = [];
 
     try {
+      // STEP 2: Upload Main Image
+      mainImageUrl = await uploadImage(formData.mainImage);
+
+      // STEP 3: Upload Additional Images (jika ada)
+      for (const file of formData.additionalImages) {
+        try {
+          const url = await uploadImage(file);
+          additionalImageUrls.push(url);
+        } catch (uploadErr) {
+          console.warn(
+            `Warning: Could not upload additional image ${file.name}. Error: ${uploadErr.message}`
+          );
+          // Lanjutkan proses meskipun ada gambar tambahan yang gagal diupload
+        }
+      }
+
+      // STEP 4: Kirim data villa ke database (setelah semua gambar berhasil diupload atau ditangani)
+      const completeData = {
+        name: formData.villaName,
+        location: formData.address,
+        description: formData.description,
+        guests: parseInt(formData.capacity),
+        price: parseFloat(formData.price),
+        mainImage: mainImageUrl,
+        images: additionalImageUrls,
+        features: roomFeatures,
+        area: formData.size,
+        beds: parseInt(formData.bedType),
+        bathrooms: 0, // Default value, modify if you add input for this
+        pool: 0, // Default value, modify if you add input for this
+        floor: 0, // Default value, modify if you add input for this
+      };
+
       const response = await fetch(`${BASE_URL}/api/villas`, {
         method: "POST",
         headers: {
@@ -128,25 +175,31 @@ const AddVilla = () => {
       if (response.ok) {
         alert("Villa data uploaded successfully!");
         console.log("Villa added:", data);
-        // Clear form or redirect
+        // Clear form and previews after successful upload AND database save
         setFormData({
           villaName: "",
           address: "",
           description: "",
           capacity: "",
           price: "",
+          size: "",
+          bedType: "",
           mainImage: null,
+          additionalImages: [],
         });
-        setPreviewImage(null);
+        setPreviewMainImage(null);
+        setPreviewAdditionalImages([]);
         setRoomFeatures([]);
         setNewFeature("");
-        navigate("/owner"); // Redirect to owner dashboard
+        navigate("/owner");
       } else {
         setError(data.message || "Failed to upload villa data.");
       }
     } catch (err) {
-      console.error("Villa upload error:", err);
-      setError("Network error or server unavailable.");
+      console.error("Villa submission error:", err);
+      setError(
+        err.message || "An unexpected error occurred during villa submission."
+      );
     } finally {
       setLoading(false);
     }
@@ -159,20 +212,92 @@ const AddVilla = () => {
         <form onSubmit={handleSubmit} className="add-villa-form">
           <div className="upload-section">
             <label>UPLOAD IMAGES</label>
-            <div className="image-placeholder">
-              {previewImage ? (
-                <img src={previewImage} alt="Villa Preview" />
-              ) : (
-                <span>No image selected</span>
-              )}
+
+            {/* Main Image Upload */}
+            <div className="mb-3">
+              <label htmlFor="mainImage" className="form-label">
+                Main Image
+              </label>
+              <div className="image-placeholder">
+                {previewMainImage ? (
+                  <img src={previewMainImage} alt="Main Villa Preview" />
+                ) : (
+                  <span>No main image selected</span>
+                )}
+              </div>
+              <input
+                type="file"
+                name="mainImage"
+                id="mainImage"
+                onChange={handleChange}
+                accept="image/*"
+                className="form-control"
+                required
+              />
             </div>
-            <input
-              type="file"
-              name="mainImage"
-              onChange={handleChange}
-              accept="image/*"
-            />{" "}
-            {/* Changed name */}
+
+            {/* Additional Images Upload */}
+            <div className="mb-3">
+              <label htmlFor="additionalImages" className="form-label">
+                Additional Images (Optional)
+              </label>
+              <input
+                type="file"
+                name="additionalImages"
+                id="additionalImages"
+                onChange={handleChange}
+                accept="image/*"
+                multiple
+                className="form-control"
+              />
+              <div className="d-flex flex-wrap mt-2 gap-2">
+                {previewAdditionalImages.map((preview, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      position: "relative",
+                      width: "100px",
+                      height: "100px",
+                      border: "1px solid #ddd",
+                      borderRadius: "8px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <img
+                      src={preview}
+                      alt={`Additional Preview ${index}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeAdditionalImage(index)}
+                      style={{
+                        position: "absolute",
+                        top: "5px",
+                        right: "5px",
+                        backgroundColor: "rgba(255,0,0,0.7)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "50%",
+                        width: "20px",
+                        height: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      X
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
 
           <div className="details-section">
@@ -219,6 +344,24 @@ const AddVilla = () => {
                 required
               />
             </div>
+            {/* Input for Size */}
+            <input
+              type="text"
+              name="size"
+              placeholder="Size (e.g., 24m²)"
+              value={formData.size}
+              onChange={handleChange}
+              required
+            />
+            {/* Input for Bed Type */}
+            <input
+              type="text"
+              name="bedType"
+              placeholder="Bed Type (e.g., 1 King Bed)"
+              value={formData.bedType}
+              onChange={handleChange}
+              required
+            />
 
             {/* Room Features Section */}
             <label>ROOM FEATURES</label>

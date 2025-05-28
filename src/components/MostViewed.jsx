@@ -16,12 +16,15 @@ const MostViewed = () => {
       setLoading(true);
       setError(null);
       try {
-        // Untuk "Most Viewed", Anda mungkin perlu endpoint khusus di backend
-        // atau cukup mengambil beberapa villa pertama dari daftar utama.
-        const response = await fetch(`${BASE_URL}/api/villas?limit=3`); // Contoh: mengambil 3 villa teratas
+        // Mengambil 3 villa teratas (atau sesuai limit dari backend)
+        const response = await fetch(`${BASE_URL}/api/villas?limit=3`);
         if (response.ok) {
           const data = await response.json();
-          setVillas(data);
+          // PERBAIKAN: Filter status "Approved" di frontend untuk tampilan Most Viewed
+          const approvedVillas = data.filter(
+            (villa) => villa.status === "Approved"
+          );
+          setVillas(approvedVillas); // Set data villa yang sudah difilter
         } else {
           const errorData = await response.json();
           setError(errorData.message || "Failed to fetch most viewed villas.");
@@ -58,11 +61,15 @@ const MostViewed = () => {
               "id-ID"
             )} / Night`}
             image={
-              villa.mainImage.startsWith("/")
+              // Pastikan URL gambar dari backend benar
+              villa.mainImage &&
+              (villa.mainImage.startsWith("/")
                 ? BASE_URL + villa.mainImage
-                : villa.mainImage
-            } // Pastikan URL gambar dari backend benar
-            onBookNow={() => navigate(`/villa-detail/${villa.id}`)} // Arahkan ke detail villa dengan ID
+                : villa.mainImage.startsWith("http")
+                ? villa.mainImage
+                : BASE_URL + "/" + villa.mainImage)
+            }
+            villaId={villa.id} // ID villa diteruskan ke VillaCard
           />
         ))}
       </div>

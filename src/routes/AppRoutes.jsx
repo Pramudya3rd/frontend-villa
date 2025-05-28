@@ -22,11 +22,12 @@ import OwnerDashboard from "../pages/OwnerPage";
 import AddVilla from "../pages/AddVilla";
 import NotFoundPage from "../pages/NotFoundPage";
 import ForbiddenPage from "../pages/ForbiddenPage";
-import ProtectedRoute from "./ProtectedRoute";
+import ProtectedRoute from "./ProtectedRoute"; // Pastikan ini diimpor
 
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* Rute Publik (akses tanpa login) */}
       <Route path="/" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -37,16 +38,19 @@ export default function AppRoutes() {
       <Route path="/forbidden" element={<ForbiddenPage />} />
 
       {/* Rute Publik yang mungkin menunjukkan konten berbeda jika login */}
+      {/* Rute ini akan tetap publik, tapi jika detail villa dipindahkan ke protected, ini akan memengaruhi jalur ke detail */}
       <Route path="/our-villa" element={<OurVilla />} />
-      <Route path="/villa-detail/:id" element={<DetailsVilla />} />
       <Route path="/faq" element={<FaqPage />} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/about" element={<AboutPage />} />
 
       {/* Rute yang Dilindungi untuk pengguna yang sudah login */}
+      {/* Ini akan melindungi semua rute di dalamnya, termasuk detail villa, booking, pembayaran, dll. */}
       <Route element={<ProtectedRoute />}>
         <Route path="/homepage" element={<HomePage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        {/* NEW: Rute Detail Villa sekarang dilindungi */}
+        <Route path="/villa-detail/:id" element={<DetailsVilla />} /> {/* */}
         {/* Pastikan rute booking ini memiliki parameter :villaId */}
         <Route path="/booking/:villaId" element={<Booking />} />
         <Route path="/payment/:bookingId" element={<Payment />} />

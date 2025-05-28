@@ -10,8 +10,8 @@ export default function DetailsVilla() {
   return (
     <>
       <NavbarProfile />
-      <Detail villaId={id} />{" "}
-      {/* Lewatkan ID villa sebagai prop ke komponen Detail */}
+      <Detail />{" "}
+      {/* Detail component akan mengambil ID dari useParams-nya sendiri */}
     </>
   );
 }

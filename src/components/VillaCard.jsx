@@ -4,11 +4,10 @@ import "../styles/VillaCard.css";
 import { FaStar } from "react-icons/fa";
 
 const VillaCard = ({ title, location, price, image, villaId }) => {
-  // Add villaId prop
   const navigate = useNavigate();
 
   const handleBookNow = () => {
-    navigate(`/villa-detail/${villaId}`); // Navigate to detail page with villaId
+    navigate(`/villa-detail/${villaId}`); // Navigasi ke detail page dengan villaId
   };
 
   return (
@@ -27,8 +26,7 @@ const VillaCard = ({ title, location, price, image, villaId }) => {
             <span className="text-warning">
               <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
             </span>
-            <small className="text-muted ms-2">4.9 (20 Reviews)</small>{" "}
-            {/* This should come from backend */}
+            <small className="text-muted ms-2">4.9 (20 Reviews)</small>
           </div>
 
           <p className="mb-1 small text-muted">Start From</p>

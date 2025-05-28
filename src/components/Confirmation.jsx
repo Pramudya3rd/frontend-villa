@@ -13,67 +13,106 @@ import {
 } from "react-icons/fa";
 import "../styles/Confirmation.css";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL; // Pastikan variabel ini ada di .env frontend
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const Confirmation = ({ bookingId }) => {
-  // Menerima bookingId sebagai prop
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = useAuth();
   const [bookingData, setBookingData] = useState(
     location.state?.booking || null
   );
+  const [villaData, setVillaData] = useState(null); // NEW: State for villa details
   const [paymentProofFile, setPaymentProofFile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Set true initially as we fetch data
   const [error, setError] = useState(null);
 
+  // Helper function to safely construct image URLs (copy from Detail.jsx or make a utility)
+  const getImageUrl = (path) => {
+    if (!path) {
+      return "https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg";
+    }
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${BASE_URL}${normalizedPath}`;
+  };
+
   useEffect(() => {
-    // Ambil detail booking jika tidak dilewatkan melalui state
-    const fetchBookingDetails = async () => {
-      if (bookingData) {
-        setLoading(false);
-        return;
-      }
-      if (!bookingId || !token) {
-        setError("Booking ID or authentication token is missing.");
-        setLoading(false);
-        return;
-      }
-      try {
-        // Ambil semua booking pengguna dan cari yang spesifik
-        const response = await fetch(`${BASE_URL}/api/bookings/my-bookings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.ok) {
-          const allBookings = await response.json();
-          const currentBooking = allBookings.find(
-            (b) => b.id === parseInt(bookingId)
-          );
-          if (currentBooking) {
-            setBookingData(currentBooking);
-          } else {
-            setError("Booking not found.");
-          }
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || "Failed to fetch booking details.");
+    const fetchDetails = async () => {
+      setLoading(true);
+      setError(null);
+
+      let currentBooking = bookingData;
+      // Fetch booking details if not available from location.state
+      if (!currentBooking) {
+        if (!bookingId || !token) {
+          setError("Booking ID or authentication token is missing.");
+          setLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error("Error fetching booking details:", err);
-        setError("Network error or server unavailable.");
-      } finally {
-        setLoading(false);
+        try {
+          const response = await fetch(`${BASE_URL}/api/bookings/my-bookings`, {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const allBookings = await response.json();
+            currentBooking = allBookings.find(
+              (b) => b.id === parseInt(bookingId)
+            );
+            if (currentBooking) {
+              setBookingData(currentBooking);
+            } else {
+              setError("Booking not found or not accessible.");
+              setLoading(false);
+              return;
+            }
+          } else {
+            const errorData = await response.json();
+            setError(errorData.message || "Failed to fetch booking details.");
+            setLoading(false);
+            return;
+          }
+        } catch (err) {
+          console.error("Error fetching booking details:", err);
+          setError("Network error or server unavailable for bookings.");
+          setLoading(false);
+          return;
+        }
       }
+
+      // Now fetch villa details using villaId from currentBooking
+      if (currentBooking && currentBooking.villaId) {
+        try {
+          const villaRes = await fetch(
+            `${BASE_URL}/api/villas/${currentBooking.villaId}`
+          );
+          if (villaRes.ok) {
+            const villaInfo = await villaRes.json();
+            setVillaData(villaInfo);
+          } else {
+            const errorData = await villaRes.json();
+            setError(errorData.message || "Failed to fetch villa details.");
+          }
+        } catch (err) {
+          console.error("Error fetching villa details:", err);
+          setError("Network error or server unavailable for villa.");
+        }
+      } else {
+        setError("Villa ID not found in booking data.");
+      }
+      setLoading(false);
     };
-    fetchBookingDetails();
-  }, [bookingId, bookingData, token]); // Dependensi diperbarui
+
+    fetchDetails();
+  }, [bookingId, bookingData, token]); // Add villaData to dependencies
 
   const handleFileChange = (e) => {
     setPaymentProofFile(e.target.files[0]);
   };
 
   const handleConfirm = async () => {
-    // Dinamai ulang dari handleBooking untuk menghindari kebingungan
     setLoading(true);
     setError(null);
 
@@ -120,7 +159,7 @@ const Confirmation = ({ bookingId }) => {
 
     try {
       const response = await fetch(
-        `<span class="math-inline">\{BASE\_URL\}/api/bookings/</span>{bookingId}/payment-proof`,
+        `${BASE_URL}/api/bookings/${bookingId}/payment-proof`, // BARIS YANG DIPERBAIKI
         {
           method: "PUT",
           headers: {
@@ -134,12 +173,15 @@ const Confirmation = ({ bookingId }) => {
       const data = await response.json();
 
       if (response.ok) {
-        alert("Payment proof uploaded successfully!");
+        alert(
+          "Payment proof uploaded successfully! Your booking is being processed."
+        );
         navigate(`/invoice/${bookingId}`, {
           state: { booking: { ...bookingData, paymentProof: paymentProofUrl } },
         });
       } else {
-        setError(data.message || "Failed to confirm booking.");
+        console.error("Backend error during booking confirmation:", data);
+        setError(data.message || "Failed to confirm booking. Server error.");
       }
     } catch (err) {
       console.error("Confirmation error:", err);
@@ -155,22 +197,27 @@ const Confirmation = ({ bookingId }) => {
   if (!bookingData)
     return (
       <p className="text-center mt-5">
-        No booking details found for confirmation.
+        No booking details found for confirmation. Please ensure you came from
+        the payment page.
       </p>
     );
 
   return (
     <div className="villa-booking-container">
-      {/* Kartu Villa (menggunakan hardcoded untuk sementara, idealnya dilewatkan dari langkah sebelumnya) */}
+      {/* Kartu Villa (gunakan data dari villaData) */}
       <div className="villa-card">
         <img
-          src="https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg"
+          src={
+            villaData
+              ? getImageUrl(villaData.mainImage)
+              : "https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg"
+          }
           alt="Villa"
           className="villa-image"
         />
         <div className="villa-content">
           <p className="villa-tagline">THE CHOICE OF FAMILIES</p>
-          <h5 className="villa-title">De Santika Nirwana</h5>
+          <h5 className="villa-title">{villaData?.name || "Villa Name"}</h5>
           <div className="villa-rating">
             <span className="text-warning">
               <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
@@ -179,24 +226,62 @@ const Confirmation = ({ bookingId }) => {
           </div>
           <hr />
           <div className="villa-features">
-            <div>
-              <FaBed /> Beds <strong>4</strong>
-            </div>
-            <div>
-              <FaBath /> Bathrooms <strong>2</strong>
-            </div>
-            <div>
-              <FaRulerCombined /> Area <strong>24m²</strong>
-            </div>
-            <div>
-              <FaSwimmer /> Swimming Pool <strong>1</strong>
-            </div>
-            <div>
-              <FaUserFriends /> Guest <strong>6</strong>
-            </div>
-            <div>
-              <FaLayerGroup /> Floor <strong>2</strong>
-            </div>
+            {/* Tampilkan fitur dari villaData jika tersedia */}
+            {villaData &&
+              Array.isArray(villaData.features) &&
+              villaData.features
+                .filter((f) => f.trim() !== "")
+                .map((feature, i) => (
+                  <div key={i}>
+                    {feature.toLowerCase().includes("tv") && (
+                      <FaTv className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("wifi") && (
+                      <FaWifi className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("air conditioner") && (
+                      <FaSnowflake className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("heater") && (
+                      <FaThermometerHalf className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("private bathroom") && (
+                      <FaBath className="me-2" />
+                    )}
+                    {feature}
+                  </div>
+                ))}
+            {/* Tampilkan detail spesifik seperti beds, bathrooms dari villaData */}
+            {villaData?.beds && (
+              <div>
+                <FaBed /> Beds <strong>{villaData.beds}</strong>
+              </div>
+            )}
+            {villaData?.bathrooms && (
+              <div>
+                <FaBath /> Bathrooms <strong>{villaData.bathrooms}</strong>
+              </div>
+            )}
+            {villaData?.area && (
+              <div>
+                <FaRulerCombined /> Area <strong>{villaData.area}</strong>
+              </div>
+            )}
+            {villaData?.pool && (
+              <div>
+                <FaSwimmer /> Swimming Pool <strong>{villaData.pool}</strong>
+              </div>
+            )}
+            {villaData?.guests && (
+              <div>
+                <FaUserFriends /> Guest <strong>{villaData.guests}</strong>
+              </div>
+            )}
+            {villaData?.floor && (
+              <div>
+                <FaLayerGroup /> Floor <strong>{villaData.floor}</strong>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -265,8 +350,14 @@ const Confirmation = ({ bookingId }) => {
               type="file"
               className="file-input"
               onChange={handleFileChange}
+              accept="image/*" // Hanya terima file gambar
             />
           </div>
+          {paymentProofFile && (
+            <p className="mt-2 text-success">
+              File selected: {paymentProofFile.name}
+            </p>
+          )}
         </div>
 
         <button

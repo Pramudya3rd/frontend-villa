@@ -13,70 +13,100 @@ import {
 } from "react-icons/fa";
 import "../styles/Payment.css";
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL; // Pastikan variabel ini ada di .env frontend
+const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const PaymentPage = ({ bookingId }) => {
-  // Menerima bookingId sebagai prop
   const navigate = useNavigate();
   const location = useLocation();
   const { token } = useAuth();
   const [bookingData, setBookingData] = useState(
     location.state?.booking || null
   );
-  const [villaTitle, setVillaTitle] = useState(
-    location.state?.villaTitle || "Villa Name"
-  );
-  const [loading, setLoading] = useState(!bookingData);
+  const [villaData, setVillaData] = useState(null); // NEW: State for villa details
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Helper function to safely construct image URLs
+  const getImageUrl = (path) => {
+    if (!path) {
+      return "https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg"; // Default placeholder if path is empty
+    }
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${BASE_URL}${normalizedPath}`;
+  };
+
   useEffect(() => {
-    const fetchBookingDetails = async () => {
-      if (bookingData) {
-        // Jika data sudah dilewatkan melalui state, tidak perlu fetch
-        setLoading(false);
-        return;
-      }
-      if (!bookingId || !token) {
-        setError("Booking ID or authentication token is missing.");
-        setLoading(false);
-        return;
-      }
-      try {
-        // Ambil semua booking pengguna dan cari yang spesifik
-        const response = await fetch(`${BASE_URL}/api/bookings/my-bookings`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.ok) {
-          const allBookings = await response.json();
-          const currentBooking = allBookings.find(
-            (b) => b.id === parseInt(bookingId)
-          );
-          if (currentBooking) {
-            setBookingData(currentBooking);
-            // Coba ambil nama villa jika tidak tersedia dari state
-            const villaRes = await fetch(
-              `<span class="math-inline">\{BASE\_URL\}/api/villas/</span>{currentBooking.villaId}`
+    const fetchDetails = async () => {
+      setLoading(true);
+      setError(null);
+
+      let currentBooking = bookingData;
+      // Fetch booking details if not available from location.state
+      if (!currentBooking) {
+        if (!bookingId || !token) {
+          setError("Booking ID or authentication token is missing.");
+          setLoading(false);
+          return;
+        }
+        try {
+          const response = await fetch(`${BASE_URL}/api/bookings/my-bookings`, {
+            // Assuming this endpoint returns a list of bookings
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const allBookings = await response.json();
+            currentBooking = allBookings.find(
+              (b) => b.id === parseInt(bookingId)
             );
-            if (villaRes.ok) {
-              const villaInfo = await villaRes.json();
-              setVillaTitle(villaInfo.name);
+            if (currentBooking) {
+              setBookingData(currentBooking);
+            } else {
+              setError("Booking not found or not accessible.");
+              setLoading(false);
+              return;
             }
           } else {
-            setError("Booking not found.");
+            const errorData = await response.json();
+            setError(errorData.message || "Failed to fetch booking details.");
+            setLoading(false);
+            return;
           }
-        } else {
-          const errorData = await response.json();
-          setError(errorData.message || "Failed to fetch booking details.");
+        } catch (err) {
+          console.error("Error fetching booking details:", err);
+          setError("Network error or server unavailable for bookings.");
+          setLoading(false);
+          return;
         }
-      } catch (err) {
-        console.error("Error fetching booking details:", err);
-        setError("Network error or server unavailable.");
-      } finally {
-        setLoading(false);
       }
+
+      // Now fetch villa details using villaId from currentBooking
+      if (currentBooking && currentBooking.villaId) {
+        try {
+          const villaRes = await fetch(
+            `${BASE_URL}/api/villas/${currentBooking.villaId}`
+          );
+          if (villaRes.ok) {
+            const villaInfo = await villaRes.json();
+            setVillaData(villaInfo);
+          } else {
+            const errorData = await villaRes.json();
+            setError(errorData.message || "Failed to fetch villa details.");
+          }
+        } catch (err) {
+          console.error("Error fetching villa details:", err);
+          setError("Network error or server unavailable for villa.");
+        }
+      } else {
+        setError("Villa ID not found in booking data.");
+      }
+      setLoading(false);
     };
-    fetchBookingDetails();
-  }, [bookingId, bookingData, token]); // Pastikan dependensi useEffect sudah benar
+
+    fetchDetails();
+  }, [bookingId, bookingData, token]); // Add villaData to dependencies to avoid re-fetching loop
 
   const handleConfirmPayment = () => {
     if (bookingData) {
@@ -109,16 +139,20 @@ const PaymentPage = ({ bookingId }) => {
 
   return (
     <div className="villa-booking-container">
-      {/* Kartu Villa (menggunakan hardcoded untuk sementara, idealnya dilewatkan dari langkah sebelumnya) */}
+      {/* Kartu Villa (gunakan data dari villaData) */}
       <div className="villa-card">
         <img
-          src="https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg"
+          src={
+            villaData
+              ? getImageUrl(villaData.mainImage)
+              : "https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg"
+          }
           alt="Villa"
           className="villa-image"
         />
         <div className="villa-content">
           <p className="villa-tagline">THE CHOICE OF FAMILIES</p>
-          <h5 className="villa-title">{villaTitle}</h5>
+          <h5 className="villa-title">{villaData?.name || "Villa Name"}</h5>
           <div className="villa-rating">
             <span className="text-warning">
               <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
@@ -127,24 +161,62 @@ const PaymentPage = ({ bookingId }) => {
           </div>
           <hr />
           <div className="villa-features">
-            <div>
-              <FaBed /> Beds <strong>4</strong>
-            </div>
-            <div>
-              <FaBath /> Bathrooms <strong>2</strong>
-            </div>
-            <div>
-              <FaRulerCombined /> Area <strong>24m²</strong>
-            </div>
-            <div>
-              <FaSwimmer /> Swimming Pool <strong>1</strong>
-            </div>
-            <div>
-              <FaUserFriends /> Guest <strong>6</strong>
-            </div>
-            <div>
-              <FaLayerGroup /> Floor <strong>2</strong>
-            </div>
+            {/* Tampilkan fitur dari villaData jika tersedia */}
+            {villaData &&
+              Array.isArray(villaData.features) &&
+              villaData.features
+                .filter((f) => f.trim() !== "")
+                .map((feature, i) => (
+                  <div key={i}>
+                    {feature.toLowerCase().includes("tv") && (
+                      <FaTv className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("wifi") && (
+                      <FaWifi className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("air conditioner") && (
+                      <FaSnowflake className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("heater") && (
+                      <FaThermometerHalf className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("private bathroom") && (
+                      <FaBath className="me-2" />
+                    )}
+                    {feature}
+                  </div>
+                ))}
+            {/* Tampilkan detail spesifik seperti beds, bathrooms dari villaData */}
+            {villaData?.beds && (
+              <div>
+                <FaBed /> Beds <strong>{villaData.beds}</strong>
+              </div>
+            )}
+            {villaData?.bathrooms && (
+              <div>
+                <FaBath /> Bathrooms <strong>{villaData.bathrooms}</strong>
+              </div>
+            )}
+            {villaData?.area && (
+              <div>
+                <FaRulerCombined /> Area <strong>{villaData.area}</strong>
+              </div>
+            )}
+            {villaData?.pool && (
+              <div>
+                <FaSwimmer /> Swimming Pool <strong>{villaData.pool}</strong>
+              </div>
+            )}
+            {villaData?.guests && (
+              <div>
+                <FaUserFriends /> Guest <strong>{villaData.guests}</strong>
+              </div>
+            )}
+            {villaData?.floor && (
+              <div>
+                <FaLayerGroup /> Floor <strong>{villaData.floor}</strong>
+              </div>
+            )}
           </div>
         </div>
       </div>

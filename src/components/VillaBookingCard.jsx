@@ -1,5 +1,5 @@
 // frontend-sewa-villa/src/components/VillaBookingCard.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import {
@@ -15,37 +15,98 @@ import "../styles/VillaBookingCard.css";
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
-const VillaBookingCard = ({ villaId }) => {
-  // Menerima villaId sebagai prop
+const VillaBookingCard = () => {
+  // Hapus { villaId } dari props karena kita ambil dari useParams
+  const { villaId } = useParams(); // Ambil villaId dari URL
   const navigate = useNavigate();
   const location = useLocation();
   const { user, token } = useAuth();
 
-  // Dapatkan detail villa dari location.state jika dilewatkan dari halaman Detail
-  const {
-    title,
-    price,
-    mainImage,
-    features,
-    beds,
-    bathrooms,
-    area,
-    pool,
-    guests,
-    floor,
-  } = location.state || {};
+  // Data villa yang diteruskan dari DetailsVilla (atau kosong jika langsung akses URL)
+  const [villaDetailsFromState, setVillaDetailsFromState] = useState(
+    location.state || null
+  );
+
+  // State untuk data villa yang akan ditampilkan di card
+  const [villaData, setVillaData] = useState(null);
 
   const [bookingDetails, setBookingDetails] = useState({
     firstName: user?.name.split(" ")[0] || "",
     lastName: user?.name.split(" ").slice(1).join(" ") || "",
     email: user?.email || "",
     phoneNumber: user?.phone || "",
-    duration: "",
+    duration: "", // Ini akan dihitung atau diisi manual
     checkInDate: "",
     checkOutDate: "",
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Loading untuk fetch data villa
+  const [bookingLoading, setBookingLoading] = useState(false); // Loading untuk proses booking
   const [error, setError] = useState(null);
+
+  // Helper function to safely construct image URLs
+  const getImageUrl = (path) => {
+    if (!path) {
+      return "https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg";
+    }
+    if (path.startsWith("http://") || path.startsWith("https://")) {
+      return path;
+    }
+    const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+    return `${BASE_URL}${normalizedPath}`;
+  };
+
+  useEffect(() => {
+    const fetchVillaAndPopulateForm = async () => {
+      setLoading(true);
+      setError(null);
+
+      let currentVillaData = null;
+
+      // Coba ambil dari location.state terlebih dahulu
+      if (villaDetailsFromState && villaDetailsFromState.title) {
+        currentVillaData = villaDetailsFromState;
+      } else {
+        // Jika tidak ada di state, fetch dari backend
+        if (!villaId) {
+          setError("Villa ID is missing in URL.");
+          setLoading(false);
+          return;
+        }
+        try {
+          const response = await fetch(`${BASE_URL}/api/villas/${villaId}`);
+          if (response.ok) {
+            const data = await response.json();
+            currentVillaData = data;
+          } else {
+            const errorData = await response.json();
+            setError(errorData.message || "Failed to fetch villa details.");
+          }
+        } catch (err) {
+          console.error("Error fetching villa details:", err);
+          setError("Network error or server unavailable for villa details.");
+        }
+      }
+
+      if (currentVillaData) {
+        setVillaData(currentVillaData);
+        // Set form data user jika sudah login
+        if (user) {
+          setBookingDetails((prev) => ({
+            ...prev,
+            firstName: user.name.split(" ")[0] || "",
+            lastName: user.name.split(" ").slice(1).join(" ") || "",
+            email: user.email || "",
+            phoneNumber: user.phone || "",
+          }));
+        }
+      } else {
+        setError("Villa details could not be loaded.");
+      }
+      setLoading(false);
+    };
+
+    fetchVillaAndPopulateForm();
+  }, [villaId, user, villaDetailsFromState]); // Tambah villaDetailsFromState ke dependencies
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,24 +114,21 @@ const VillaBookingCard = ({ villaId }) => {
   };
 
   const handleBooking = async () => {
-    // Fungsi ini dipanggil ketika "Request To Book" diklik, BUKAN "Book Now" dari detail
-    // Jika Anda ingin error ini muncul ketika "Book Now" diklik, masalahnya mungkin navigasi
-    console.log("[DEBUG BookingCard] Requesting to book...");
-    setLoading(true);
+    setBookingLoading(true); // Gunakan bookingLoading untuk tombol
     setError(null);
 
     if (!token || !user) {
       setError("You must be logged in to book a villa.");
-      setLoading(false);
+      setBookingLoading(false);
       return;
     }
-    if (!villaId || !title || !price) {
+    if (!villaId || !villaData) {
       setError("Villa details are missing. Please go back and select a villa.");
-      setLoading(false);
+      setBookingLoading(false);
       return;
     }
 
-    // Validasi dasar
+    // Validasi dasar form input
     if (
       !bookingDetails.firstName ||
       !bookingDetails.email ||
@@ -80,20 +138,49 @@ const VillaBookingCard = ({ villaId }) => {
       !bookingDetails.checkOutDate
     ) {
       setError("Please fill all required fields.");
-      setLoading(false);
+      setBookingLoading(false);
       return;
     }
 
+    // NEW: Validasi ketersediaan di Frontend sebelum Request to Book
     try {
-      const durationValue = parseInt(bookingDetails.duration.split(" ")[0]);
-      const basePrice = parseFloat(price);
-      const calculatedTotalPrice = basePrice * (durationValue || 1);
-      const taxPercentage = 0.1;
-      const taxAmount = calculatedTotalPrice * taxPercentage;
-      const finalTotalPrice = calculatedTotalPrice + taxAmount;
+      const checkInDate = bookingDetails.checkInDate;
+      const checkOutDate = bookingDetails.checkOutDate;
 
-      const bookingData = {
-        userId: user.id,
+      const availabilityResponse = await fetch(
+        `${BASE_URL}/api/villas?checkInDate=${checkInDate}&checkOutDate=${checkOutDate}`
+      );
+      const availableVillas = await availabilityResponse.json();
+
+      const isVillaAvailable = availableVillas.some(
+        (villa) => villa.id === parseInt(villaId)
+      );
+
+      if (!isVillaAvailable) {
+        setError(
+          "Villa is not available for the selected dates. Please choose different dates or another villa."
+        );
+        setBookingLoading(false);
+        return;
+      }
+    } catch (availabilityError) {
+      console.error("Error checking villa availability:", availabilityError);
+      setError("Failed to check villa availability. Please try again.");
+      setBookingLoading(false);
+      return;
+    }
+
+    // Hitung total harga
+    const durationValue = parseInt(bookingDetails.duration.split(" ")[0]); // Asumsi format "X Nights"
+    const basePrice = parseFloat(villaData.price);
+    const calculatedTotalPrice = basePrice * (durationValue || 1);
+    const taxPercentage = 0.1; // 10% tax
+    const taxAmount = calculatedTotalPrice * taxPercentage;
+    const finalTotalPrice = calculatedTotalPrice + taxAmount;
+
+    try {
+      const bookingDataToSend = {
+        userId: user.id, // Pastikan userId ada dari auth context
         villaId: parseInt(villaId),
         firstName: bookingDetails.firstName,
         lastName: bookingDetails.lastName,
@@ -104,6 +191,7 @@ const VillaBookingCard = ({ villaId }) => {
         checkOutDate: bookingDetails.checkOutDate,
         totalPrice: finalTotalPrice,
         tax: taxAmount,
+        status: "Pending", // Status awal booking
       };
 
       const response = await fetch(`${BASE_URL}/api/bookings`, {
@@ -112,47 +200,65 @@ const VillaBookingCard = ({ villaId }) => {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(bookingData),
+        body: JSON.stringify(bookingDataToSend),
       });
 
       const data = await response.json();
 
       if (response.ok) {
         console.log("Booking created:", data);
+        alert("Booking request sent! Please proceed to payment.");
         navigate(`/payment/${data.id}`, {
           state: {
             booking: data,
-            villaTitle: title,
+            villaTitle: villaData.name, // Kirim nama villa
           },
         });
       } else {
-        setError(data.message || "Failed to create booking.");
+        // Tangani error spesifik dari backend (misal: villa tidak tersedia)
+        if (response.status === 409) {
+          // Conflict status for unavailability
+          setError(
+            data.message ||
+              "The villa is not available for the selected dates. Please choose different dates."
+          );
+        } else {
+          setError(data.message || "Failed to create booking.");
+        }
       }
     } catch (err) {
       console.error("Booking error:", err);
-      setError("Network error or server unavailable.");
+      setError("Network error or server unavailable during booking creation.");
     } finally {
-      setLoading(false);
+      setBookingLoading(false);
     }
   };
+
+  if (loading)
+    return (
+      <p className="text-center mt-5">Loading villa details for booking...</p>
+    );
+  if (error && !bookingLoading)
+    return <p className="text-center text-danger mt-5">{error}</p>; // Tampilkan error loading
+  if (!villaData)
+    return (
+      <p className="text-center mt-5">
+        Villa details could not be loaded for booking.
+      </p>
+    );
 
   return (
     <div className="villa-booking-container">
       {/* Kartu Villa (tampilkan data villa yang diambil/dilewatkan) */}
       <div className="villa-card">
         <img
-          src={
-            mainImage && mainImage.startsWith("/")
-              ? BASE_URL + mainImage
-              : mainImage ||
-                "https://i.pinimg.com/73x/89/c1/df/89c1dfaf3e2bf035718cf2a76a16fd38.jpg"
-          }
+          src={getImageUrl(villaData.mainImage)}
           alt="Villa"
           className="villa-image"
         />
         <div className="villa-content">
           <p className="villa-tagline">THE CHOICE OF FAMILIES</p>
-          <h5 className="villa-title">{title || "Villa Name"}</h5>
+          <h5 className="villa-title">{villaData.name}</h5>
           <div className="villa-rating">
             <span className="text-warning">
               <FaStar /> <FaStar /> <FaStar /> <FaStar /> <FaStar />
@@ -161,24 +267,60 @@ const VillaBookingCard = ({ villaId }) => {
           </div>
           <hr />
           <div className="villa-features">
-            <div>
-              <FaBed /> Beds <strong>{beds || 4}</strong>
-            </div>
-            <div>
-              <FaBath /> Bathrooms <strong>{bathrooms || 2}</strong>
-            </div>
-            <div>
-              <FaRulerCombined /> Area <strong>{area || "24m²"}</strong>
-            </div>
-            <div>
-              <FaSwimmer /> Swimming Pool <strong>{pool || 1}</strong>
-            </div>
-            <div>
-              <FaUserFriends /> Guest <strong>{guests || 6}</strong>
-            </div>
-            <div>
-              <FaLayerGroup /> Floor <strong>{floor || 2}</strong>
-            </div>
+            {villaData &&
+              Array.isArray(villaData.features) &&
+              villaData.features
+                .filter((f) => f.trim() !== "")
+                .map((feature, i) => (
+                  <div key={i}>
+                    {feature.toLowerCase().includes("tv") && (
+                      <FaTv className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("wifi") && (
+                      <FaWifi className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("air conditioner") && (
+                      <FaSnowflake className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("heater") && (
+                      <FaThermometerHalf className="me-2" />
+                    )}
+                    {feature.toLowerCase().includes("private bathroom") && (
+                      <FaBath className="me-2" />
+                    )}
+                    {feature}
+                  </div>
+                ))}
+            {villaData.beds && (
+              <div>
+                <FaBed /> Beds <strong>{villaData.beds}</strong>
+              </div>
+            )}
+            {villaData.bathrooms && (
+              <div>
+                <FaBath /> Bathrooms <strong>{villaData.bathrooms}</strong>
+              </div>
+            )}
+            {villaData.area && (
+              <div>
+                <FaRulerCombined /> Area <strong>{villaData.area}</strong>
+              </div>
+            )}
+            {villaData.pool && (
+              <div>
+                <FaSwimmer /> Swimming Pool <strong>{villaData.pool}</strong>
+              </div>
+            )}
+            {villaData.guests && (
+              <div>
+                <FaUserFriends /> Guest <strong>{villaData.guests}</strong>
+              </div>
+            )}
+            {villaData.floor && (
+              <div>
+                <FaLayerGroup /> Floor <strong>{villaData.floor}</strong>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -186,7 +328,8 @@ const VillaBookingCard = ({ villaId }) => {
       {/* Formulir Pemesanan */}
       <div className="booking-form">
         <h5 className="form-title">ENTER YOUR DETAILS</h5>
-        {error && <p className="text-danger">{error}</p>}
+        {error && <p className="text-danger">{error}</p>}{" "}
+        {/* Tampilkan error booking/validasi */}
         <div className="form-grid">
           <div className="form-group">
             <label>First Name</label>
@@ -197,6 +340,7 @@ const VillaBookingCard = ({ villaId }) => {
               value={bookingDetails.firstName}
               onChange={handleChange}
               required
+              readOnly={!!user} // Jika sudah login, tidak bisa diubah
             />
           </div>
           <div className="form-group">
@@ -207,6 +351,7 @@ const VillaBookingCard = ({ villaId }) => {
               placeholder="Last Name"
               value={bookingDetails.lastName}
               onChange={handleChange}
+              readOnly={!!user} // Jika sudah login, tidak bisa diubah
             />
           </div>
           <div className="form-group">
@@ -218,6 +363,7 @@ const VillaBookingCard = ({ villaId }) => {
               value={bookingDetails.email}
               onChange={handleChange}
               required
+              readOnly={!!user} // Jika sudah login, tidak bisa diubah
             />
           </div>
           <div className="form-group">
@@ -229,10 +375,11 @@ const VillaBookingCard = ({ villaId }) => {
               value={bookingDetails.phoneNumber}
               onChange={handleChange}
               required
+              readOnly={!!user} // Jika sudah login, tidak bisa diubah
             />
           </div>
           <div className="form-group full-width">
-            <label>Duration</label>
+            <label>Duration (e.g., 2 Nights)</label>
             <input
               type="text"
               name="duration"
@@ -266,9 +413,9 @@ const VillaBookingCard = ({ villaId }) => {
         <button
           className="submit-button"
           onClick={handleBooking}
-          disabled={loading}
+          disabled={bookingLoading} // Gunakan bookingLoading untuk tombol
         >
-          {loading ? "Requesting..." : "Request To Book"}
+          {bookingLoading ? "Requesting..." : "Request To Book"}
         </button>
       </div>
     </div>
