@@ -1,0 +1,58 @@
+body, html {
+  height: 100%;
+  margin: 0;
+  font-family: ' Monserrat', sans-serif;
+  font-size: 14px;
+}
+
+.login-container {
+  display: flex;
+  height: 100vh;
+}
+
+.left-side {
+  flex: 1;
+  background-size: cover;
+  background-position: center;
+}
+
+.right-side {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+.login-form {
+  width: 100%;
+  max-width: 400px;
+}
+
+.form-control:focus {
+  box-shadow: none;
+  border-color: #5e869e;
+}
+
+.btn-login {
+  background-color: #5e869e;
+  color: #fff;
+}
+
+.btn-login:hover {
+  background-color: #4a6f84;
+}
+
+.forgot-password {
+  text-align: right;
+}
+
+.forgot-password a {
+  color: #34495e;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+
+.forgot-password a:hover {
+  text-decoration: underline;
+}

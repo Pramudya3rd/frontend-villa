@@ -1,0 +1,151 @@
+.add-villa-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  margin: 0 20px;
+}
+
+.add-villa-form {
+  display: flex;
+  background-color: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+  gap: 40px;
+  max-width: 1000px;
+  width: 100%;
+}
+
+.image-placeholder {
+  width: 100%;
+  height: 260px;
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #888;
+  margin-bottom: 10px;
+  background-color: #f9f9f9;
+  overflow: hidden;
+}
+
+.image-placeholder img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.upload-section input[type="file"] {
+  margin-top: 10px;
+}
+
+.upload-section,
+.details-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.upload-section label,
+.details-section label {
+  font-weight: bold;
+  margin-bottom: 16px;
+  color: #2c3e50;
+}
+
+.details-section input,
+.details-section textarea {
+  margin-bottom: 16px;
+  padding: 12px;
+  border: 1px solid #bdd1e0;
+  border-radius: 10px;
+  font-size: 16px;
+}
+
+.details-section textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.inline-inputs {
+  display: flex;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.features-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 10px;
+}
+
+.features-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #f2f2f2;
+  padding: 6px 10px;
+  margin-bottom: 5px;
+  border-radius: 4px;
+}
+
+.features-list button {
+  background: none;
+  border: none;
+  color: red;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.feature-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 16px;
+  height: 50px;
+  box-sizing: border-box;
+}
+
+.add-feature-btn {
+  height: 50px;
+  padding: 0 20px;
+  background-color: #5c8196;
+  color: white;
+  border: 1px solid #5c8196;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background 0.2s ease-in-out;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-feature-btn:hover {
+  background-color: #4a6a7e;
+}
+
+.upload-btn {
+  background-color: #5c8196;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.upload-btn:hover {
+  background-color: #4a6a7e;
+}
+
+.full-width-btn {
+  width: 100%;
+  padding: 12px;
+}
+

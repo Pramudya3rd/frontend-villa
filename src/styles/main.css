@@ -1,0 +1,189 @@
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background-color: #fff;
+}
+
+.bg-lightblue {
+  background-color: #d7e4ee;
+}
+
+.navbar .nav-link {
+  color: #333;
+}
+
+.navbar .nav-link:hover {
+  color: #007bff;
+}
+
+.profile-icon {
+  cursor: pointer;
+}
+
+.dropdown-menu {
+  z-index: 1000;
+  min-width: 150px;
+}
+
+.dropdown-item:hover {
+  background-color: #f0f0f0;
+}
+
+.hero {
+  position: relative;
+  height: 600px;
+  overflow: hidden;
+}
+
+.hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-text {
+  position: absolute;
+  top: 45%;
+  left: 10%;
+  z-index: 2;
+  color: #2d3e50;
+  transform: translateY(-50%);
+}
+
+.hero-text h1 {
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.hero-text p {
+  font-size: 15px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.filter-buttons {
+  position: absolute;
+  bottom: 5px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  background: white;
+  padding: 12px 24px;
+  border-radius: 32px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  z-index: 2;
+}
+
+.filter-buttons button {
+  background-color: #d7e4ee;
+  border: none;
+  color: #2d3e50;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.filter-buttons button:hover {
+  background-color: #c1d6e9;
+}
+
+.section-title {
+  font-weight: 700;
+  text-align: center;
+  margin-top: 80px;
+  margin-bottom: 30px;
+}
+
+.section-subtitle {
+  text-align: center;
+  font-size: 14px;
+  color: #2d3e50;
+  margin-bottom: 40px;
+}
+
+.villa-card img {
+  height: 200px;
+  object-fit: cover;
+}
+
+.book-btn {
+  border-radius: 8px;
+  font-size: 13px;
+  padding: 4px 12px;
+}
+
+.accordion-button {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.accordion-body {
+  font-size: 14px;
+}
+
+.contact-form input,
+.contact-form textarea {
+  font-size: 14px;
+}
+
+footer {
+  background-color: #d9e6f2;
+  padding: 40px 60px;
+}
+
+footer h5 {
+  font-weight: 600;
+  font-size: 25px;
+}
+
+footer p,
+footer a {
+  font-size: 15px;
+  color: #2d3e50;
+  text-decoration: none;
+  margin-bottom: 5px;
+}
+
+.about-section {
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+  margin-top: 80px;
+  margin-bottom: 80px;
+  padding-right: 0;  /* Hilangkan padding kanan */
+  margin-right: 0;
+}
+
+.about-section img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media (min-width: 768px) {
+  .about-section {
+    flex-direction: row-reverse;
+    align-items: center;
+  }
+
+  .about-section img {
+    max-width: 100%;
+  }
+
+  .hero-text h1 {
+    font-size: 32px;
+  }
+}
+
+.footer-social a {
+  margin-right: 10px;
+  font-size: 18px;
+  color: #2d3e50;
+}
+
+.footer-social a:hover {
+  color: #007bff;
+}

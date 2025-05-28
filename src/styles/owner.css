@@ -1,0 +1,113 @@
+.owner-dashboard {
+  background-color: #e6eef5;
+  min-height: 100vh;
+}
+
+.owner-container {
+  display: flex;
+}
+
+.owner-sidebar {
+  width: 200px;
+  background-color: #fff;
+  padding: 40px 20px;
+  box-shadow: 2px 0 8px rgba(0, 0, 0, 0.05);
+  font-weight: bold;
+}
+
+.owner-sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.owner-sidebar li {
+  margin-bottom: 20px;
+  color: #2c3e50;
+  cursor: pointer;
+}
+
+.owner-sidebar li.active {
+  color: #3498db;
+}
+
+.owner-content {
+  flex: 1;
+  padding: 40px;
+  background-color: #f4f9fc;
+}
+
+.add-villa-btn {
+  background-color: #6c8494;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-bottom: 24px;
+}
+
+.add-villa-btn:hover {
+  background-color: #5b7180;
+}
+
+.villa-table {
+  background: #fff;
+  padding: 24px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.villa-table table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.villa-table th,
+.villa-table td {
+  padding: 16px;
+  color: #4a4a4a;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.villa-table th {
+  color: #2c3e50;
+  font-weight: 600;
+}
+
+.action-icons svg {
+  cursor: pointer;
+  margin-right: 12px;
+  font-size: 18px;
+  color: #2c3e50;
+  transition: color 0.3s ease;
+}
+
+.action-icons svg:hover {
+  color: #3498db;
+}
+
+@media (max-width: 768px) {
+  .owner-container {
+    flex-direction: column;
+  }
+
+  .owner-sidebar {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid #ddd;
+  }
+
+  .owner-content {
+    padding: 20px;
+  }
+
+  .villa-table table,
+  .villa-table th,
+  .villa-table td {
+    font-size: 14px;
+  }
+}
+

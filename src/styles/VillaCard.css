@@ -1,0 +1,34 @@
+.villa-card {
+  transition: transform 0.3s ease;
+}
+
+.villa-card:hover {
+  transform: translateY(-4px);
+}
+
+.villa-image {
+  height: 200px;
+  object-fit: cover;
+}
+
+/* Warna khusus tombol */
+.custom-btn {
+  background-color: #577C8E;
+  color: #fff;
+  border: none;
+}
+
+.custom-btn:hover {
+  background-color: #4d6e7e;
+}
+
+.custom-btn {
+  background-color: #577C8E !important;
+  color: #fff !important;
+  border: none !important;
+}
+
+.custom-btn:hover {
+  background-color: #4d6e7e !important;
+  color: #fff !important;
+}

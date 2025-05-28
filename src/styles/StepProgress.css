@@ -1,0 +1,61 @@
+.step-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  background-color: #cfdbe4;
+  color: #2e3d4f;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.step-circle.active {
+  background-color: #4a6e82;
+  color: white;
+}
+
+.step-circle.completed {
+  background-color: #4a6e82;
+  color: white;
+}
+
+.step-label {
+  margin-top: 4px;
+  font-size: 13px;
+  color: gray;
+}
+
+.step-label.active-label {
+  color: #4a6e82;
+  font-weight: 600;
+}
+
+.step-line {
+  width: 48px;
+  height: 2px;
+  margin-top: 14px;
+}
+
+.step-line.line-completed {
+  background-color: #4a6e82;
+}
+
+.step-line.line-pending {
+  border-top: 2px dotted #cfdbe4;
+}
